@@ -2,7 +2,7 @@
 
 var fs = require('fs')
 var path = require('path')
-var test = require('tape')
+var test = require('tape-promise/tape')
 var negate = require('negate')
 var hidden = require('is-hidden')
 var fromXml = require('..')
@@ -279,6 +279,34 @@ test('fixtures', function(t) {
     var input = String(fs.readFileSync(join(base, fixture, 'index.xml')))
     var fp = join(base, fixture, 'index.json')
     var actual = fromXml(input)
+    var expected
+
+    try {
+      expected = JSON.parse(fs.readFileSync(fp))
+    } catch (_) {
+      // New fixture.
+      fs.writeFileSync(fp, JSON.stringify(actual, 0, 2) + '\n')
+      return
+    }
+
+    t.deepEqual(actual, expected, fixture)
+  }
+})
+
+test('fixtures stream', async function(t) {
+  var base = join('test', 'fixtures')
+
+  return Promise.all(
+    fs
+      .readdirSync(base)
+      .filter(negate(hidden))
+      .map(each)
+  )
+
+  async function each(fixture) {
+    var input = fs.createReadStream(join(base, fixture, 'index.xml'), 'utf-8')
+    var fp = join(base, fixture, 'index.json')
+    var actual = await fromXml(input)
     var expected
 
     try {

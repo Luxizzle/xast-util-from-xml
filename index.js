@@ -52,6 +52,10 @@ var underscore = 95 // '_'
 var lowercaseA = 97 // 'a'
 var lowercaseZ = 122 // 'z'
 
+/**
+ *
+ * @param {String | import('stream').Readable} doc
+ */
 function fromXml(doc) {
   var parser = new Parser(true, {position: true, strictEntities: true})
   var node = {type: 'root', children: []}
@@ -70,9 +74,21 @@ function fromXml(doc) {
   parser.onclosetag = onclose
   parser.onerror = onerror
 
-  parser.write(doc).close()
+  if (typeof doc === 'string') {
+    parser.write(doc).close()
 
-  return node
+    return node
+  }
+
+  return (async () => {
+    for await (const chunk of doc) {
+      parser.write(chunk)
+    }
+
+    parser.close()
+
+    return node
+  })()
 
   function onerror(err) {
     var reason = err.message
